@@ -97,6 +97,52 @@ function getFirstValueByTagName(xml, name)  {
 
 /* POI */
 
+class POI {
+	constructor(xml){
+		this.name = getFirstValueByTagName(xml, "name");
+		this.latitude = getFirstValueByTagName(xml, "latitude");
+		this.longitude = getFirstValueByTagName(xml, "longitude");
+	}
+}
+
+class VGP extends POI {
+	constructor(xml){
+		super(xml)
+		this.altitude = getFirstValueByTagName(xml, "altitude");
+		this.type = getFirstValueByTagName(xml, "type");
+		this.order = getFirstValueByTagName(xml, "order");
+	}
+
+}
+
+class VG1 extends VGP {
+	constructor(xml){
+		super(xml);
+	}
+
+}
+
+class VG2 extends VGP {
+	constructor(xml){
+		super(xml);
+	}
+}
+
+class VG3 extends VGP {
+	constructor(xml){
+		super(xml);
+	}
+
+
+}
+
+class VG4 extends VGP {
+	constructor(xml){
+		super(xml);
+	}
+
+}
+
 class VG {
 	constructor(xml) {
 		this.name = getFirstValueByTagName(xml, "name");
@@ -179,8 +225,21 @@ class Map {
 		if(xs.length == 0)
 			alert("Empty file");
 		else {
-			for(let i = 0 ; i < xs.length ; i++)
-				vgs[i] = new VG(xs[i]);
+			for(let i = 0 ; i < xs.length ; i++){
+				//vgs[i] = new VG(xs[i]);
+				let a = getFirstValueByTagName(xs[i], "order")
+				a = parseInt(a);
+				switch (a){
+					case 1: vgs[i] = new VG1(xs[i]);
+					break;
+					case 2: vgs[i] = new VG2(xs[i]);
+					break;
+					case 3: vgs[i] = new VG3(xs[i]);
+					break;
+					case 4: vgs[i] = new VG4(xs[i]);
+					break;
+				}
+			}
 		}
 		return vgs;
 	}
@@ -217,6 +276,10 @@ class Map {
 			circle.bindPopup(popup);
 		return circle;
 	}
+
+	setVisible(order){
+		for(let i = 0; i < this.lmap.getLayers() ; i++)
+	}
 }
 
 
@@ -226,6 +289,13 @@ function onLoad()
 {
 	map = new Map(MAP_CENTRE, 12);
 	map.addCircle(MAP_CENTRE, 100, "FCT/UNL");
+}
+
+function checkBoxUpdate(document){
+	for(let i = 1; i < VG_ORDERS.length; i++)
+	if (document.getElementById("order" + i).checked)
+		map.setVisible("order" + i);
+	else map.setInvisible("order" + i);
 }
 
 
