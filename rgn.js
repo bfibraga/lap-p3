@@ -279,14 +279,21 @@ class Map {
 
 	setVisibility(vg, opacity){
 		let target = [vg.latitude, vg.longitude];
+		let vis_span = 	document.getElementById('visible_caches');
+		let interval = 0;
 		this.markers.forEach(element => {
 			let curr_latLng = element.getLatLng();
 			let curr = [curr_latLng.lat, curr_latLng.lng];
 			if (curr[0] = target[0] && curr[1] == target[1]) {
 				//alert(target[0] + ", " + target[1]);
-				element.setOpacity(opacity)
+				element.setOpacity(opacity);
+				interval = opacity > 0 ? interval+1 : interval-1;
 			}
 		});
+		//alert(interval);
+		let visInt = parseInt(vis_span.innerHTML);
+		visInt += interval;
+		vis_span.innerHTML = visInt;
 	}
 	
 }
@@ -297,7 +304,9 @@ function onLoad()
 {
 	map = new Map(MAP_CENTRE, 12);
 	map.addCircle(MAP_CENTRE, 100, "FCT/UNL");
-	update_vgs_count(vgs.length);
+	allOrderChecked();
+	document.getElementById('visible_caches').innerHTML = vgs.length;
+	document.getElementById('total_caches').innerHTML = vgs.length;
 }
 
 function checkboxUpdate(document){
@@ -310,9 +319,9 @@ function checkboxUpdate(document){
 	});
 }
 
-function update_vgs_count(num){
-
+function allOrderChecked() {
+	VG_ORDERS.forEach(order => {
+		document.getElementById(order).checked = true;
+	});
 }
-
-
 
