@@ -48,7 +48,7 @@ const GOOGLE_MAPS_URL = "https://www.google.com/maps/@";
 /* GLOBAL VARIABLES */
 
 let map = null;
-let vgs = null;
+//let vgs = null;
 
 /* USEFUL FUNCTIONS */
 
@@ -156,11 +156,19 @@ class VG {
 
 class Map {
 	constructor(center, zoom) {
-		this.markers = [];
+		//this.markers = [];
+		//Group of layers for each order of vg
+		this.order1_layerGroup = L.layerGroup();
+		this.order2_layerGroup = L.layerGroup();
+		this.order3_layerGroup = L.layerGroup();
+		this.order4_layerGroup = L.layerGroup();
+		this.countByOrder = [0,0,0,0];
+		this.highestVG = null;
+		this.lowestVG = null;
 		this.lmap = L.map(MAP_ID).setView(center, zoom);
 		this.addBaseLayers(MAP_LAYERS);
 		let icons = this.loadIcons(RESOURCES_DIR);
-		vgs = this.loadRGN(RESOURCES_DIR + RGN_FILE_NAME);
+		let vgs = this.loadRGN(RESOURCES_DIR + RGN_FILE_NAME);
 		this.populate(icons, vgs);
 		this.addClickHandler(e =>
 			L.popup()
@@ -237,6 +245,14 @@ class Map {
 					case 4: vgs[i] = new VG4(xs[i]);
 					break;
 				}
+				if (this.highestVG == null || 
+					Number(this.highestVG.altitude) < Number(vgs[i].altitude)) {
+					this.highestVG = vgs[i];
+				}
+				if (this.lowestVG == null || 
+					Number(this.lowestVG.altitude) > Number(vgs[i].altitude)) {
+					this.lowestVG = vgs[i];
+				}
 			}
 		}
 		return vgs;
@@ -244,17 +260,39 @@ class Map {
 
 	populate(icons, vgs)  {
 		for(let i = 0 ; i < vgs.length ; i++) {
-			this.addMarker(icons, vgs[i]);
+			switch (parseInt(vgs[i].order)){
+				case 1: this.order1_layerGroup.addLayer(this.addMarker(icons, vgs[i]));
+				break;
+				case 2: this.order2_layerGroup.addLayer(this.addMarker(icons, vgs[i]));
+				break;
+				case 3: this.order3_layerGroup.addLayer(this.addMarker(icons, vgs[i]));
+				break;
+				case 4: this.order4_layerGroup.addLayer(this.addMarker(icons, vgs[i]));
+				break;
+			}
+			let pos = parseInt(vgs[i].order) - 1;
+			this.countByOrder[pos] = this.countByOrder[pos] + 1;
 		}
+		this.order1_layerGroup.addTo(this.lmap);
+		this.order2_layerGroup.addTo(this.lmap);
+		this.order3_layerGroup.addTo(this.lmap);
+		this.order4_layerGroup.addTo(this.lmap);
 	}
 
 	addMarker(icons, vg) {
 		let marker = L.marker([vg.latitude, vg.longitude], {icon: icons['order'+vg.order]});
-		this.markers.push(marker);
+		//this.markers.push(marker);
 		marker
-			.bindPopup("This is " + vg.name + " at " + vg.latitude + ", " + vg.longitude)
-				.bindTooltip(vg.name)
-					.addTo(this.lmap);
+			.bindPopup("Nome do Local: " + vg.name +
+			"<br>Ordem: " + vg.order +
+			"<br>Tipo: " + vg.type +
+			"<br>Latitude: " + vg.latitude + 
+			"<br>Longitude: " + vg.longitude + 
+			"<br>Altitude: " + vg.altitude
+			)
+			.bindTooltip(vg.name);
+			//.addTo(this.lmap);
+		return marker;
 	}
 
 	addClickHandler(handler) {
@@ -276,25 +314,6 @@ class Map {
 			circle.bindPopup(popup);
 		return circle;
 	}
-
-	setVisibility(vg, opacity){
-		let target = [vg.latitude, vg.longitude];
-		let vis_span = 	document.getElementById('visible_caches');
-		let interval = 0;
-		this.markers.forEach(element => {
-			let curr_latLng = element.getLatLng();
-			let curr = [curr_latLng.lat, curr_latLng.lng];
-			if (curr[0] = target[0] && curr[1] == target[1]) {
-				//alert(target[0] + ", " + target[1]);
-				element.setOpacity(opacity);
-				interval = opacity > 0 ? interval+1 : interval-1;
-			}
-		});
-		//alert(interval);
-		let visInt = parseInt(vis_span.innerHTML);
-		visInt += interval;
-		vis_span.innerHTML = visInt;
-	}
 	
 }
 
@@ -305,18 +324,64 @@ function onLoad()
 	map = new Map(MAP_CENTRE, 12);
 	map.addCircle(MAP_CENTRE, 100, "FCT/UNL");
 	allOrderChecked();
-	document.getElementById('visible_caches').innerHTML = vgs.length;
-	document.getElementById('total_caches').innerHTML = vgs.length;
+	//document.getElementById('visible_caches').innerHTML = vgs.length;
+	function sumVGs() {
+		let sum = 0;
+		map.countByOrder.forEach(e => {
+			sum += e;
+		});
+		return sum;
+	};
+	document.getElementById('total_caches').innerHTML = sumVGs();
+	document.getElementById('visible_caches').innerHTML = sumVGs();
+	document.getElementById('highest_vg').innerHTML = map.highestVG.name;
+	document.getElementById('lowest_vg').innerHTML = map.lowestVG.name;
 }
 
 function checkboxUpdate(document){
 	let orderStr = document.id;
 	let order = parseInt(orderStr.slice(5));
 	let opacity = document.checked ? 1 : 0;
-	vgs.forEach(vg => {
-		//alert(parseInt(vg.order));
-		if (parseInt(vg.order) == order) map.setVisibility(vg, opacity);
-	});
+
+	let span_content = this.document.getElementById('visible_caches');
+	switch (order){
+			case 1: 
+				if (document.checked) {
+					map.order1_layerGroup.addTo(map.lmap);
+					span_content.innerHTML = parseInt(span_content.innerHTML) + map.countByOrder[0];
+				} else {
+					map.order1_layerGroup.remove(map.lmap);
+					span_content.innerHTML = parseInt(span_content.innerHTML) - map.countByOrder[0];
+				}
+			break;
+			case 2: 
+				if (document.checked) {
+					map.order2_layerGroup.addTo(map.lmap);
+					span_content.innerHTML = parseInt(span_content.innerHTML) + map.countByOrder[1];
+				} else {
+					map.order2_layerGroup.remove(map.lmap);
+				span_content.innerHTML = parseInt(span_content.innerHTML) - map.countByOrder[1];
+				}
+			break;
+			case 3:
+				if (document.checked) {
+					map.order3_layerGroup.addTo(map.lmap);
+					span_content.innerHTML = parseInt(span_content.innerHTML) + map.countByOrder[2];
+				} else {
+					map.order3_layerGroup.remove(map.lmap);
+					span_content.innerHTML = parseInt(span_content.innerHTML) - map.countByOrder[2];
+				}
+			break;
+			case 4: 
+				if (document.checked) {
+					map.order4_layerGroup.addTo(map.lmap);
+					span_content.innerHTML = parseInt(span_content.innerHTML) + map.countByOrder[3];
+				} else {
+					map.order4_layerGroup.remove(map.lmap);
+					span_content.innerHTML = parseInt(span_content.innerHTML) - map.countByOrder[3];
+				}
+			break;
+		}
 }
 
 function allOrderChecked() {
@@ -325,3 +390,67 @@ function allOrderChecked() {
 	});
 }
 
+function alertTalefes() {
+	let vg_names = calculateTalefes();
+	alert("Ordem 1: " + calculateTalefes() + 
+	"\nOrdem 2: " + calculateBolembreanosGrandes() +
+	"\nOrdem 3: " + calculateBolembreanosMedios());
+}
+
+//Ordem 1
+function calculateTalefes() {
+	//percorrer o layer
+	let invalid = [];
+	map.order1_layerGroup.eachLayer(function (layer1) {
+		let isValid = 0;
+		map.order1_layerGroup.eachLayer(function (layer2) {
+			let distance = map.lmap.distance(layer1.getLatLng(), layer2.getLatLng());
+			if (!layer1.getLatLng().equals(layer2.getLatLng()) && distance >= 30000 && distance <= 60000) {
+				isValid = 1;
+				return;
+			} 
+		})
+		if (isValid == 0) invalid.push(layer1.getTooltip().toString());
+	});
+
+	return invalid;
+}
+
+//Ordem 2
+function calculateBolembreanosGrandes() {
+	//percorrer o layer
+	let invalid = [];
+	map.order2_layerGroup.eachLayer(function (layer1) {
+		let isValid = 0;
+		map.order2_layerGroup.eachLayer(function (layer2) {
+			let distance = map.lmap.distance(layer1.getLatLng(), layer2.getLatLng());
+			if (!layer1.getLatLng().equals(layer2.getLatLng()) && distance >= 20000 && distance <= 30000) {
+				isValid = 1;
+				return;
+			} 
+		})
+		if (isValid == 0) invalid.push(layer1.getTooltip());
+	});
+
+	return invalid;
+}
+
+//Ordem 3
+function calculateBolembreanosMedios() {
+	//percorrer o layer
+	let invalid = [];
+	map.order3_layerGroup.eachLayer(function (layer1) {
+		let isValid = 0;
+		map.order3_layerGroup.eachLayer(function (layer2) {
+			//Distancia em metros
+			let distance = map.lmap.distance(layer1.getLatLng(), layer2.getLatLng());
+			if (!layer1.getLatLng().equals(layer2.getLatLng()) && distance >= 5000 && distance <= 10000) {
+				isValid = 1;
+				return;
+			} 
+		})
+		if (isValid == 0) invalid.push(layer1.getTooltip());
+	});
+
+	return invalid;
+}
