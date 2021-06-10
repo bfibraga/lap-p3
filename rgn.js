@@ -1,7 +1,7 @@
 /*     Rede Geodésica Nacional
 
-Aluno 1: ?number ?name <-- mandatory to fill
-Aluno 2: ?number ?name <-- mandatory to fill
+Aluno 1: 57747 Bruno Braga
+Aluno 2: 57833 Bruno Cabrita
 
 Comentario:
 
@@ -44,12 +44,11 @@ const VG_ORDERS =
 const RGN_FILE_NAME =
 	"rgn.xml";
 
-
+const GOOGLE_MAPS_URL = "https://www.google.com/maps/@";
 /* GLOBAL VARIABLES */
 
 let map = null;
-
-
+let vgs = null;
 
 /* USEFUL FUNCTIONS */
 
@@ -132,8 +131,6 @@ class VG3 extends VGP {
 	constructor(xml){
 		super(xml);
 	}
-
-
 }
 
 class VG4 extends VGP {
@@ -159,10 +156,11 @@ class VG {
 
 class Map {
 	constructor(center, zoom) {
+		this.markers = [];
 		this.lmap = L.map(MAP_ID).setView(center, zoom);
 		this.addBaseLayers(MAP_LAYERS);
 		let icons = this.loadIcons(RESOURCES_DIR);
-		let vgs = this.loadRGN(RESOURCES_DIR + RGN_FILE_NAME);
+		vgs = this.loadRGN(RESOURCES_DIR + RGN_FILE_NAME);
 		this.populate(icons, vgs);
 		this.addClickHandler(e =>
 			L.popup()
@@ -245,14 +243,16 @@ class Map {
 	}
 
 	populate(icons, vgs)  {
-		for(let i = 0 ; i < vgs.length ; i++)
+		for(let i = 0 ; i < vgs.length ; i++) {
 			this.addMarker(icons, vgs[i]);
+		}
 	}
 
 	addMarker(icons, vg) {
 		let marker = L.marker([vg.latitude, vg.longitude], {icon: icons['order'+vg.order]});
+		this.markers.push(marker);
 		marker
-			.bindPopup("I'm the marker of VG <b>" + vg.name + "</b>.")
+			.bindPopup("This is " + vg.name + " at " + vg.latitude + ", " + vg.longitude)
 				.bindTooltip(vg.name)
 					.addTo(this.lmap);
 	}
@@ -269,7 +269,7 @@ class Map {
 		let circle =
 			L.circle(pos,
 				radius,
-				{color: 'red', fillColor: 'pink', fillOpacity: 0.4}
+				{color: 'yellow', fillColor: 'orange', fillOpacity: 0.4}
 			);
 		circle.addTo(this.lmap);
 		if( popup != "" )
@@ -277,11 +277,19 @@ class Map {
 		return circle;
 	}
 
-	setVisible(order){
-		for(let i = 0; i < this.lmap.getLayers() ; i++)
+	setVisibility(vg, opacity){
+		let target = [vg.latitude, vg.longitude];
+		this.markers.forEach(element => {
+			let curr_latLng = element.getLatLng();
+			let curr = [curr_latLng.lat, curr_latLng.lng];
+			if (curr[0] = target[0] && curr[1] == target[1]) {
+				//alert(target[0] + ", " + target[1]);
+				element.setOpacity(opacity)
+			}
+		});
 	}
+	
 }
-
 
 /* FUNCTIONS for HTML */
 
@@ -289,13 +297,21 @@ function onLoad()
 {
 	map = new Map(MAP_CENTRE, 12);
 	map.addCircle(MAP_CENTRE, 100, "FCT/UNL");
+	update_vgs_count(vgs.length);
 }
 
-function checkBoxUpdate(document){
-	for(let i = 1; i < VG_ORDERS.length; i++)
-	if (document.getElementById("order" + i).checked)
-		map.setVisible("order" + i);
-	else map.setInvisible("order" + i);
+function checkboxUpdate(document){
+	let orderStr = document.id;
+	let order = parseInt(orderStr.slice(5));
+	let opacity = document.checked ? 1 : 0;
+	vgs.forEach(vg => {
+		//alert(parseInt(vg.order));
+		if (parseInt(vg.order) == order) map.setVisibility(vg, opacity);
+	});
+}
+
+function update_vgs_count(num){
+
 }
 
 
