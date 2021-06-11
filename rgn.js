@@ -105,50 +105,68 @@ class POI {
 }
 
 class VGP extends POI {
-	constructor(xml){
+	constructor(xml, icon){
 		super(xml)
 		this.altitude = getFirstValueByTagName(xml, "altitude");
 		this.type = getFirstValueByTagName(xml, "type");
 		this.order = getFirstValueByTagName(xml, "order");
+		this.marker = this.createMarker(icon)
 	}
+
+	createMarker(icon){
+		let marker = L.marker([this.latitude, this.longitude], {icon: icon});
+		//this.markers.push(marker);
+		marker
+			.bindPopup("Nome do Local: " + this.name +
+			"<br>Ordem: " + this.order +
+			"<br>Tipo: " + this.type +
+			"<br>Latitude: " + this.latitude + 
+			"<br>Longitude: " + this.longitude + 
+			"<br>Altitude: " + this.altitude +
+			this.getButtomStreet(this.latitude, this.longitude)
+			)
+			.bindTooltip(this.name);
+			//.addTo(this.lmap);
+		return marker;
+	}
+
+	getButtomStreet(lat, long) {
+        let buttom = 
+        "<br><INPUT TYPE='button' ID='streets' VALUE='Google Streets' ONCLICK='openStreets(" + lat + "," + long + ")'>";
+        return buttom;
+    }
+	
 
 }
 
 class VG1 extends VGP {
-	constructor(xml){
-		super(xml);
+	constructor(xml, icon){
+		super(xml, icon);
 	}
+
+	
 
 }
 
 class VG2 extends VGP {
-	constructor(xml){
-		super(xml);
+	constructor(xml, icon){
+		super(xml, icon);
 	}
 }
 
 class VG3 extends VGP {
-	constructor(xml){
-		super(xml);
+	constructor(xml, icon){
+		super(xml, icon);
 	}
+
 }
 
 class VG4 extends VGP {
-	constructor(xml){
-		super(xml);
+	constructor(xml, icon){
+		super(xml, icon);
+		
 	}
 
-}
-
-class VG {
-	constructor(xml) {
-		this.name = getFirstValueByTagName(xml, "name");
-		this.latitude = getFirstValueByTagName(xml, "latitude");
-		this.longitude = getFirstValueByTagName(xml, "longitude");
-		this.order = getFirstValueByTagName(xml, "order");
-		this.altitude = getFirstValueByTagName(xml, "altitude");
-		this.type = getFirstValueByTagName(xml, "type");
-	}
 }
 
 
@@ -169,16 +187,20 @@ class Map {
 		this.lmap = L.map(MAP_ID).setView(center, zoom);
 		this.addBaseLayers(MAP_LAYERS);
 		let icons = this.loadIcons(RESOURCES_DIR);
-		this.vgs = this.loadRGN(RESOURCES_DIR + RGN_FILE_NAME);
-		this.populate(icons);
-		this.altitudeCircles = this.getAltitude();
+		this.vgs = this.loadRGN(RESOURCES_DIR + RGN_FILE_NAME, icons);
+		this.populate();
+		this.getAltitudeCircles();
 		this.addClickHandler(e =>
 			L.popup()
 			.setLatLng(e.latlng)
 			.setContent("You clicked the map at " + e.latlng.toString())
 		);
 		
+	}
 
+	removeCircles(){	
+		this.altitudeCircles.remove(this.lmap)
+		this.lmap.off('click', function() {this.removeCircles()});
 	}
 
 	makeMapLayer(name, spec) {
@@ -196,6 +218,20 @@ class Map {
 					attribution: attr
 			});
 		return layer;
+	}
+
+	getAltitudeCircles(){
+		let circles = L.layerGroup();
+		for(let pos = 0; pos < this.vgs.length; pos++){
+			if (this.clusteringVgs.hasLayer(this.vgs[pos].marker)){
+				let alt = Number(this.vgs[pos].altitude);
+				if (Number.isNaN(alt)) alt = 0;
+				circles.addLayer(this.addCircle([this.vgs[pos].latitude, this.vgs[pos].longitude], alt));
+				}	
+			}
+		
+		this.altitudeCircles = circles;
+		
 	}
 
 	addBaseLayers(specs) {
@@ -228,7 +264,7 @@ class Map {
 		return icons;
 	}
 
-	loadRGN(filename) {
+	loadRGN(filename, icons) {
 		let xmlDoc = loadXMLDoc(filename);
 		let xs = getAllValuesByTagName(xmlDoc, "vg"); 
 		let vgs = [];
@@ -240,13 +276,13 @@ class Map {
 				let a = getFirstValueByTagName(xs[i], "order")
 				a = parseInt(a);
 				switch (a){
-					case 1: vgs[i] = new VG1(xs[i]);
+					case 1: vgs[i] = new VG1(xs[i], icons['order'+ a]);
 					break;
-					case 2: vgs[i] = new VG2(xs[i]);
+					case 2: vgs[i] = new VG2(xs[i], icons['order'+ a]);
 					break;
-					case 3: vgs[i] = new VG3(xs[i]);
+					case 3: vgs[i] = new VG3(xs[i], icons['order'+ a]);
 					break;
-					case 4: vgs[i] = new VG4(xs[i]);
+					case 4: vgs[i] = new VG4(xs[i], icons['order'+ a]);
 					break;
 				}
 				if (this.highestVG == null || 
@@ -262,16 +298,16 @@ class Map {
 		return vgs;
 	}
 
-	populate(icons)  {
+	populate()  {
 		for(let i = 0 ; i < this.vgs.length ; i++) {
 			switch (parseInt(this.vgs[i].order)){
-				case 1: this.order1_layerGroup.addLayer(this.addMarker(icons, this.vgs[i]));
+				case 1: this.order1_layerGroup.addLayer(this.vgs[i].marker);
 				break;
-				case 2: this.order2_layerGroup.addLayer(this.addMarker(icons, this.vgs[i]));
+				case 2: this.order2_layerGroup.addLayer(this.vgs[i].marker);
 				break;
-				case 3: this.order3_layerGroup.addLayer(this.addMarker(icons, this.vgs[i]));
+				case 3: this.order3_layerGroup.addLayer(this.vgs[i].marker);
 				break;
-				case 4: this.order4_layerGroup.addLayer(this.addMarker(icons, this.vgs[i]));
+				case 4: this.order4_layerGroup.addLayer(this.vgs[i].marker);
 				break;
 			}
 			let pos = parseInt(this.vgs[i].order) - 1;
@@ -282,22 +318,6 @@ class Map {
 		this.clusteringVgs.addLayer(this.order3_layerGroup);
 		this.clusteringVgs.addLayer(this.order4_layerGroup);
 		this.lmap.addLayer(this.clusteringVgs);
-	}
-
-	addMarker(icons, vg) {
-		let marker = L.marker([vg.latitude, vg.longitude], {icon: icons['order'+vg.order]});
-		//this.markers.push(marker);
-		marker
-			.bindPopup("Nome do Local: " + vg.name +
-			"<br>Ordem: " + vg.order +
-			"<br>Tipo: " + vg.type +
-			"<br>Latitude: " + vg.latitude + 
-			"<br>Longitude: " + vg.longitude + 
-			"<br>Altitude: " + vg.altitude
-			)
-			.bindTooltip(vg.name);
-			//.addTo(this.lmap);
-		return marker;
 	}
 
 	addClickHandler(handler) {
@@ -311,25 +331,12 @@ class Map {
 	addCircle(pos, radius, popup) {
 		let circle =
 			L.circle(pos,
-				radius,
-				{color: 'yellow', fillColor: 'orange', fillOpacity: 0.4}
+				radius*1.5,
+				{color: 'lightgrey', fillColor: 'lightblue', fillOpacity: 0.4}
 			);
-		circle.addTo(this.lmap);
 		if( popup != "" )
 			circle.bindPopup(popup);
 		return circle;
-	}
-
-	getAltitude(){
-		let circles = L.layerGroup();
-		for(let pos = 0; pos < this.vgs.length; pos++){
-				let alt = Number(this.vgs[pos].altitude);
-				if (Number.isNaN(alt)) alt = 0;
-				circles.addLayer(L.circle([this.vgs[pos].latitude, this.vgs[pos].longitude],
-					{radius: alt},
-					{color: 'red'}))
-				}	
-		return circles;
 	}
 	
 }
@@ -353,6 +360,7 @@ function onLoad()
 	document.getElementById('visible_caches').innerHTML = sumVGs();
 	document.getElementById('highest_vg').innerHTML = map.highestVG.name;
 	document.getElementById('lowest_vg').innerHTML = map.lowestVG.name;
+	
 }
 
 function checkboxUpdate(document){
@@ -388,6 +396,7 @@ function checkboxUpdate(document){
 			map.clusteringVgs.removeLayer(orderGroup);
 			span_content.innerHTML = parseInt(span_content.innerHTML) - sum;
 		}
+	map.getAltitudeCircles();
 }
 
 function allOrderChecked() {
@@ -397,33 +406,41 @@ function allOrderChecked() {
 }
 
 function alertInvalidVGs() {
-	alert("Ordem 1: " + calculateDistance(map.order1_layerGroup, 1, 30000, 60000) + 
-	"\nOrdem 2: " + calculateDistance(map.order2_layerGroup, 2, 20000, 40000) +
-	"\nOrdem 3: " + calculateDistance(map.order3_layerGroup, 3, 5000, 10000))
+	alert("Ordem 1: " + calculateDistance(1, 30, 60) + 
+	"\nOrdem 2: " + calculateDistance(2, 20, 40) +
+	"\nOrdem 3: " + calculateDistance(3, 5, 10))
 }
 
-function calculateDistance(orderGroup, orderNumber, leftLimit, rightLimit) {
+function calculateDistance(orderNumber, leftLimit, rightLimit) {
 	//percorrer o layer
 	let invalid = [];
 	for(let i = 0; i < map.vgs.length; i++){
 		let isValid = 0;
 		if(parseInt(map.vgs[i].order) == orderNumber){
-		let verifying = L.latLng(parseInt(map.vgs[i].latitude), parseInt(map.vgs[i].longitude));
-		orderGroup.eachLayer(function (layer) {
-			let distance = map.lmap.distance(verifying, layer.getLatLng());
+		for(let j = i; j < map.vgs.length; j++){
+			if (parseInt(map.vgs[j].order) == orderNumber){
+			let distance = haversine(map.vgs[i].latitude, map.vgs[i].longitude, map.vgs[j].latitude, map.vgs[j].longitude);
 			if ((distance != 0) && (distance >= leftLimit) && (distance <= rightLimit)){
 				isValid = 1;
-				return;
+				break;
+				}
 			}
-		})
-	
+		}
 		if (isValid == 0) invalid.push(map.vgs[i].name);
 		}
 	}
+	if (invalid.length == 0) invalid.push("Vazio");
 	return invalid;
 }
 
 function showAltitude(){
-	map.lmap.addLayer(map.altitudeCircles);
+	map.lmap.on('click', function() {map.removeCircles();});
+	map.altitudeCircles.addTo(map.lmap);
+	
+}
+
+function openStreets(lat, long){
+    let query = "http://maps.google.com/maps?q=&layer=c&cbll=";
+    document.location = query + lat + "," + long;
 }
 
