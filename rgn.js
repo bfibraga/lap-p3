@@ -149,12 +149,14 @@ class VGP extends POI {
 }
 
 class VG1 extends VGP {
-	constructor(xml, icon){
+	constructor(xml, icon, num){
 		super(xml, icon);
-		this.numOfNearbyVGs = 0;
+		this.numOfNearbyVGs = num;
+		this.marker = this.createMarker(icon)
 	}
 
 	createMarker(icon){
+		
 		let marker = L.marker([this.latitude, this.longitude], {icon: icon});
 		//this.markers.push(marker);
 		marker
@@ -166,8 +168,8 @@ class VG1 extends VGP {
 			"<br>Altitude: " + this.altitude +
 			this.getButtomStreet(this.latitude, this.longitude) +
 			this.getButtonSameType(this.type) +
-			"<br />&nbsp;&nbsp;Total Nearby VG1's: " + 
-			"<SPAN id='total_nearby_VG1s' style='color:black'>0</b></SPAN>"
+			"<br />&nbsp;&nbsp;VG1's Próximos: " + 
+			"<SPAN id='total_nearby_VG1s' style='color:black'>"+ this.numOfNearbyVGs +"</b></SPAN>"
 			)
 			.bindTooltip(this.name);
 			//.addTo(this.lmap);
@@ -192,7 +194,8 @@ class VG2 extends VGP {
 			"<br>Altitude: " + this.altitude +
 			this.getButtomStreet(this.latitude, this.longitude) +
 			this.getButtonSameType(this.type) +
-			"<br /><INPUT TYPE='button' ID='nearbyVG2s' VALUE='VG2s Proximos' ONCLICK='getNearbyVG2s("+this.latitude + "," + this.longitude +")'>"
+			"<br /><INPUT TYPE='button' ID='nearbyVG2s' VALUE='VG2s Proximos'" +
+			"ONCLICK='getNearbyVG2s("+this.latitude + "," + this.longitude +")'>"
 			)
 			.bindTooltip(this.name);
 			//.addTo(this.lmap);
@@ -247,9 +250,9 @@ class Map {
 
 	
 
-	removeCircles(){	
+	removeAltitudeCircles(){	
 		this.altitudeCircles.remove(this.lmap)
-		this.lmap.off('click', function() {this.removeCircles()});
+		this.lmap.off('click', function() {this.removeAltitudeCircles()});
 	}
 
 	removeNearbyVG2s(){
@@ -278,7 +281,18 @@ class Map {
 	removeSameTypeCircles(){
 		this.sameTypeCircles.remove(this.lmap)
 		this.lmap.off('click', function() {this.removeSameTypeCircles()});
-		this.sameTypeCircles = null;
+	}
+
+	getNearbyVG1s(lat, long, vgs){
+		let sum = 0
+		for (let i = 0; i < vgs.length; i++){
+			if (parseInt(vgs[i].order) == 1){
+				let distance = haversine(lat, long, vgs[i].latitude, vgs[i].longitude)
+				if (distance != 0 && distance <= 30)
+				sum++;
+			}
+		}
+		return sum;
 	}
 
 	getAltitudeCircles(){
@@ -287,7 +301,8 @@ class Map {
 			if (this.clusteringVgs.hasLayer(this.vgs[pos].marker)){
 				let alt = Number(this.vgs[pos].altitude);
 				if (Number.isNaN(alt)) alt = 0;
-				circles.addLayer(this.addCircle([this.vgs[pos].latitude, this.vgs[pos].longitude], alt));
+				circles.addLayer(this.addCircle([this.vgs[pos].latitude,
+					 this.vgs[pos].longitude], alt ,'orange', 'darkblue', "Altitude: " + alt));
 				}	
 			}
 		
@@ -356,6 +371,12 @@ class Map {
 					this.lowestVG = vgs[i];
 				}
 			}
+			for(let i = 0; i < vgs.length ; i++){
+				if(parseInt(vgs[i].order) == 1){
+					vgs[i] = new VG1(xs[i], icons['order1'],
+					 this.getNearbyVG1s(vgs[i].latitude, vgs[i].longitude, vgs))
+				}
+			}
 		}
 		return vgs;
 	}
@@ -390,28 +411,16 @@ class Map {
 		return this.lmap.on('click', handler2);
 	}
 
-	addCircle(pos, radius, popup) {
+	addCircle(pos, radius,colour, fillcolour, popup) {
 		let circle =
 			L.circle(pos,
 				radius*1.5,
-				{color: 'lightgrey', fillColor: 'lightblue', fillOpacity: 0.4}
+				{color: colour, fillColor: fillcolour, fillOpacity: 0.4}
 			);
 		if( popup != "" )
 			circle.bindPopup(popup);
 		return circle;
 	}
-
-	addCircleGreen(pos, radius, popup) {
-		let circle =
-			L.circle(pos,
-				radius*1.5,
-				{color: 'lime', fillColor: 'DarkGreen', fillOpacity: 0.4}
-			);
-		if( popup != "" )
-			circle.bindPopup(popup);
-		return circle;
-	}
-
 	
 }
 
@@ -420,7 +429,7 @@ class Map {
 function onLoad()
 {
 	map = new Map(MAP_CENTRE, 12);
-	map.addCircle(MAP_CENTRE, 100, "FCT/UNL");
+	map.addCircle(MAP_CENTRE, 100,'yellow', 'orange', "FCT/UNL");
 	allOrderChecked();
 	//document.getElementById('visible_caches').innerHTML = vgs.length;
 	function sumVGs() {
@@ -432,7 +441,12 @@ function onLoad()
 	};
 	document.getElementById('total_caches').innerHTML = sumVGs();
 	document.getElementById('visible_caches').innerHTML = sumVGs();
+	for(let i = 1; i <= VG_ORDERS.length; i++){
+		document.getElementById('amount_VG'+ i + 's').innerHTML = map.countByOrder[i-1];
+	}
+	
 	document.getElementById('highest_vg').innerHTML = map.highestVG.name;
+	document.getElementById('lowest_vg').innerHTML = map.lowestVG.name;
 	
 	
 }
@@ -490,17 +504,23 @@ function calculateDistance(orderNumber, leftLimit, rightLimit) {
 	let invalid = [];
 	for(let i = 0; i < map.vgs.length; i++){
 		let isValid = 0;
+		let lat1 = map.vgs[i].latitude;
+		let long1 = map.vgs[i].longitude;
 		if(parseInt(map.vgs[i].order) == orderNumber){
 		for(let j = i; j < map.vgs.length; j++){
 			if (parseInt(map.vgs[j].order) == orderNumber){
-			let distance = haversine(map.vgs[i].latitude, map.vgs[i].longitude, map.vgs[j].latitude, map.vgs[j].longitude);
-			if ((distance != 0) && (distance >= leftLimit) && (distance <= rightLimit)){
-				isValid = 1;
-				break;
+				let lat2 = map.vgs[j].latitude
+				let long2 = map.vgs[j].longitude
+				let distance = haversine(lat1, long1, lat2 , long2);
+				if ((distance != 0) && (distance >= leftLimit) && (distance <= rightLimit)){
+					isValid = 1;
+					break;
 				}
 			}
 		}
-		if (isValid == 0) invalid.push(map.vgs[i].name);
+		
+		if (isValid == 0) {
+			invalid.push(map.vgs[i].name);}
 		}
 	}
 	if (invalid.length == 0) invalid.push("Vazio");
@@ -509,7 +529,7 @@ function calculateDistance(orderNumber, leftLimit, rightLimit) {
 
 function showAltitude(){
 	map.altitudeCircles.addTo(map.lmap);
-	map.lmap.on('click', function() {map.removeCircles();});
+	map.lmap.on('click', function() {map.removeAltitudeCircles();});
 }
 
 function openStreets(lat, long){
@@ -523,10 +543,13 @@ function circleSameType(type){
 	let circles = L.layerGroup();
 	for(let i = 0; i < map.vgs.length; i++){
 		if (map.vgs[i].type === type){
-			circles.addLayer(map.addCircleGreen([map.vgs[i].latitude, map.vgs[i].longitude], 100))
+			let lat = map.vgs[i].latitude;
+			let long = map.vgs[i].longitude;
+			circles.addLayer(map.addCircle([lat, long],100,'lime', 'darkGreen', "Tipo: " + type))
 		}
 	}
-	
+	if(map.sameTypeCircles != null)
+	map.lmap.removeLayer(map.sameTypeCircles);
 	map.sameTypeCircles = circles;
 	map.sameTypeCircles.addTo(map.lmap);
 	map.lmap.on('click', function() {map.removeSameTypeCircles();});
@@ -537,9 +560,11 @@ function getNearbyVG2s(lat, long){
 	let circles = L.layerGroup();
 	for (let i = 0; i < map.vgs.length; i++){
 		if (parseInt(map.vgs[i].order) == 2){
-			let distance = haversine(lat, long, map.vgs[i].latitude, map.vgs[i].longitude)
+			let lat2 = map.vgs[i].latitude;
+			let long2 = map.vgs[i].longitude;
+			let distance = haversine(lat, long, lat2, long2)
 			if (distance != 0 && distance <= 30)
-			circles.addLayer(map.addCircleGreen([map.vgs[i].latitude, map.vgs[i].longitude], 25))
+			circles.addLayer(map.addCircle([lat2, long2], 50, 'lightblue', 'darkGreen', "VG2 Proximo do selecionado"))
 		}
 	}
 	map.showNearbyVG2s = circles;
