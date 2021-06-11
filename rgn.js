@@ -495,7 +495,7 @@ function allOrderChecked() {
 
 function alertInvalidVGs() {
 	alert("Ordem 1: " + calculateDistance(1, 30, 60) + 
-	"\nOrdem 2: " + calculateDistance(2, 20, 40) +
+	"\nOrdem 2: " + calculateDistance(2, 20, 30) +
 	"\nOrdem 3: " + calculateDistance(3, 5, 10))
 }
 
@@ -506,19 +506,21 @@ function calculateDistance(orderNumber, leftLimit, rightLimit) {
 		let isValid = 0;
 		let lat1 = map.vgs[i].latitude;
 		let long1 = map.vgs[i].longitude;
+		let distance;
 		if(parseInt(map.vgs[i].order) == orderNumber){
-		for(let j = i; j < map.vgs.length; j++){
+		for(let j = 0; j < map.vgs.length; j++){
 			if (parseInt(map.vgs[j].order) == orderNumber){
 				let lat2 = map.vgs[j].latitude
 				let long2 = map.vgs[j].longitude
-				let distance = haversine(lat1, long1, lat2 , long2);
+				distance = haversine(lat1, long1, lat2 , long2);
+				
 				if ((distance != 0) && (distance >= leftLimit) && (distance <= rightLimit)){
 					isValid = 1;
 					break;
 				}
 			}
 		}
-		
+		//alert(distance + " " + map.vgs[i].name)
 		if (isValid == 0) {
 			invalid.push(map.vgs[i].name);}
 		}
@@ -567,6 +569,8 @@ function getNearbyVG2s(lat, long){
 			circles.addLayer(map.addCircle([lat2, long2], 50, 'lightblue', 'darkGreen', "VG2 Proximo do selecionado"))
 		}
 	}
+	if(map.showNearbyVG2s != null)
+		map.lmap.removeLayer(map.showNearbyVG2s);
 	map.showNearbyVG2s = circles;
 	map.showNearbyVG2s.addTo(map.lmap);
 	map.lmap.on('click', function () {map.removeNearbyVG2s()}) 
