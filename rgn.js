@@ -158,6 +158,7 @@ class Map {
 	constructor(center, zoom) {
 		//this.markers = [];
 		//Group of layers for each order of vg
+		this.clusteringVgs = L.markerClusterGroup();
 		this.order1_layerGroup = L.layerGroup();
 		this.order2_layerGroup = L.layerGroup();
 		this.order3_layerGroup = L.layerGroup();
@@ -168,13 +169,16 @@ class Map {
 		this.lmap = L.map(MAP_ID).setView(center, zoom);
 		this.addBaseLayers(MAP_LAYERS);
 		let icons = this.loadIcons(RESOURCES_DIR);
-		let vgs = this.loadRGN(RESOURCES_DIR + RGN_FILE_NAME);
-		this.populate(icons, vgs);
+		this.vgs = this.loadRGN(RESOURCES_DIR + RGN_FILE_NAME);
+		this.populate(icons);
+		this.altitudeCircles = this.getAltitude();
 		this.addClickHandler(e =>
 			L.popup()
 			.setLatLng(e.latlng)
 			.setContent("You clicked the map at " + e.latlng.toString())
 		);
+		
+
 	}
 
 	makeMapLayer(name, spec) {
@@ -258,25 +262,26 @@ class Map {
 		return vgs;
 	}
 
-	populate(icons, vgs)  {
-		for(let i = 0 ; i < vgs.length ; i++) {
-			switch (parseInt(vgs[i].order)){
-				case 1: this.order1_layerGroup.addLayer(this.addMarker(icons, vgs[i]));
+	populate(icons)  {
+		for(let i = 0 ; i < this.vgs.length ; i++) {
+			switch (parseInt(this.vgs[i].order)){
+				case 1: this.order1_layerGroup.addLayer(this.addMarker(icons, this.vgs[i]));
 				break;
-				case 2: this.order2_layerGroup.addLayer(this.addMarker(icons, vgs[i]));
+				case 2: this.order2_layerGroup.addLayer(this.addMarker(icons, this.vgs[i]));
 				break;
-				case 3: this.order3_layerGroup.addLayer(this.addMarker(icons, vgs[i]));
+				case 3: this.order3_layerGroup.addLayer(this.addMarker(icons, this.vgs[i]));
 				break;
-				case 4: this.order4_layerGroup.addLayer(this.addMarker(icons, vgs[i]));
+				case 4: this.order4_layerGroup.addLayer(this.addMarker(icons, this.vgs[i]));
 				break;
 			}
-			let pos = parseInt(vgs[i].order) - 1;
+			let pos = parseInt(this.vgs[i].order) - 1;
 			this.countByOrder[pos] = this.countByOrder[pos] + 1;
 		}
-		this.order1_layerGroup.addTo(this.lmap);
-		this.order2_layerGroup.addTo(this.lmap);
-		this.order3_layerGroup.addTo(this.lmap);
-		this.order4_layerGroup.addTo(this.lmap);
+		this.clusteringVgs.addLayer(this.order1_layerGroup);
+		this.clusteringVgs.addLayer(this.order2_layerGroup);
+		this.clusteringVgs.addLayer(this.order3_layerGroup);
+		this.clusteringVgs.addLayer(this.order4_layerGroup);
+		this.lmap.addLayer(this.clusteringVgs);
 	}
 
 	addMarker(icons, vg) {
@@ -314,6 +319,18 @@ class Map {
 			circle.bindPopup(popup);
 		return circle;
 	}
+
+	getAltitude(){
+		let circles = L.layerGroup();
+		for(let pos = 0; pos < this.vgs.length; pos++){
+				let alt = Number(this.vgs[pos].altitude);
+				if (Number.isNaN(alt)) alt = 0;
+				circles.addLayer(L.circle([this.vgs[pos].latitude, this.vgs[pos].longitude],
+					{radius: alt},
+					{color: 'red'}))
+				}	
+		return circles;
+	}
 	
 }
 
@@ -341,46 +358,35 @@ function onLoad()
 function checkboxUpdate(document){
 	let orderStr = document.id;
 	let order = parseInt(orderStr.slice(5));
-	let opacity = document.checked ? 1 : 0;
+	let orderGroup = null;
+	let sum = 0;
 
 	let span_content = this.document.getElementById('visible_caches');
 	switch (order){
 			case 1: 
-				if (document.checked) {
-					map.order1_layerGroup.addTo(map.lmap);
-					span_content.innerHTML = parseInt(span_content.innerHTML) + map.countByOrder[0];
-				} else {
-					map.order1_layerGroup.remove(map.lmap);
-					span_content.innerHTML = parseInt(span_content.innerHTML) - map.countByOrder[0];
-				}
+				orderGroup = map.order1_layerGroup;
+				sum = map.countByOrder[0];
 			break;
 			case 2: 
-				if (document.checked) {
-					map.order2_layerGroup.addTo(map.lmap);
-					span_content.innerHTML = parseInt(span_content.innerHTML) + map.countByOrder[1];
-				} else {
-					map.order2_layerGroup.remove(map.lmap);
-				span_content.innerHTML = parseInt(span_content.innerHTML) - map.countByOrder[1];
-				}
+				orderGroup = map.order2_layerGroup;
+				sum = map.countByOrder[1];
 			break;
 			case 3:
-				if (document.checked) {
-					map.order3_layerGroup.addTo(map.lmap);
-					span_content.innerHTML = parseInt(span_content.innerHTML) + map.countByOrder[2];
-				} else {
-					map.order3_layerGroup.remove(map.lmap);
-					span_content.innerHTML = parseInt(span_content.innerHTML) - map.countByOrder[2];
-				}
+				orderGroup = map.order3_layerGroup;
+				sum = map.countByOrder[2];
 			break;
 			case 4: 
-				if (document.checked) {
-					map.order4_layerGroup.addTo(map.lmap);
-					span_content.innerHTML = parseInt(span_content.innerHTML) + map.countByOrder[3];
-				} else {
-					map.order4_layerGroup.remove(map.lmap);
-					span_content.innerHTML = parseInt(span_content.innerHTML) - map.countByOrder[3];
-				}
+				orderGroup = map.order4_layerGroup;
+				sum = map.countByOrder[3];
 			break;
+		}
+
+		if(document.checked){
+			map.clusteringVgs.addLayer(orderGroup);
+			span_content.innerHTML = parseInt(span_content.innerHTML) + sum;
+		}else{
+			map.clusteringVgs.removeLayer(orderGroup);
+			span_content.innerHTML = parseInt(span_content.innerHTML) - sum;
 		}
 }
 
@@ -390,67 +396,34 @@ function allOrderChecked() {
 	});
 }
 
-function alertTalefes() {
-	let vg_names = calculateTalefes();
-	alert("Ordem 1: " + calculateTalefes() + 
-	"\nOrdem 2: " + calculateBolembreanosGrandes() +
-	"\nOrdem 3: " + calculateBolembreanosMedios());
+function alertInvalidVGs() {
+	alert("Ordem 1: " + calculateDistance(map.order1_layerGroup, 1, 30000, 60000) + 
+	"\nOrdem 2: " + calculateDistance(map.order2_layerGroup, 2, 20000, 40000) +
+	"\nOrdem 3: " + calculateDistance(map.order3_layerGroup, 3, 5000, 10000))
 }
 
-//Ordem 1
-function calculateTalefes() {
+function calculateDistance(orderGroup, orderNumber, leftLimit, rightLimit) {
 	//percorrer o layer
 	let invalid = [];
-	map.order1_layerGroup.eachLayer(function (layer1) {
+	for(let i = 0; i < map.vgs.length; i++){
 		let isValid = 0;
-		map.order1_layerGroup.eachLayer(function (layer2) {
-			let distance = map.lmap.distance(layer1.getLatLng(), layer2.getLatLng());
-			if (!layer1.getLatLng().equals(layer2.getLatLng()) && distance >= 30000 && distance <= 60000) {
+		if(parseInt(map.vgs[i].order) == orderNumber){
+		let verifying = L.latLng(parseInt(map.vgs[i].latitude), parseInt(map.vgs[i].longitude));
+		orderGroup.eachLayer(function (layer) {
+			let distance = map.lmap.distance(verifying, layer.getLatLng());
+			if ((distance != 0) && (distance >= leftLimit) && (distance <= rightLimit)){
 				isValid = 1;
 				return;
-			} 
+			}
 		})
-		if (isValid == 0) invalid.push(layer1.getTooltip().toString());
-	});
-
+	
+		if (isValid == 0) invalid.push(map.vgs[i].name);
+		}
+	}
 	return invalid;
 }
 
-//Ordem 2
-function calculateBolembreanosGrandes() {
-	//percorrer o layer
-	let invalid = [];
-	map.order2_layerGroup.eachLayer(function (layer1) {
-		let isValid = 0;
-		map.order2_layerGroup.eachLayer(function (layer2) {
-			let distance = map.lmap.distance(layer1.getLatLng(), layer2.getLatLng());
-			if (!layer1.getLatLng().equals(layer2.getLatLng()) && distance >= 20000 && distance <= 30000) {
-				isValid = 1;
-				return;
-			} 
-		})
-		if (isValid == 0) invalid.push(layer1.getTooltip());
-	});
-
-	return invalid;
+function showAltitude(){
+	map.lmap.addLayer(map.altitudeCircles);
 }
 
-//Ordem 3
-function calculateBolembreanosMedios() {
-	//percorrer o layer
-	let invalid = [];
-	map.order3_layerGroup.eachLayer(function (layer1) {
-		let isValid = 0;
-		map.order3_layerGroup.eachLayer(function (layer2) {
-			//Distancia em metros
-			let distance = map.lmap.distance(layer1.getLatLng(), layer2.getLatLng());
-			if (!layer1.getLatLng().equals(layer2.getLatLng()) && distance >= 5000 && distance <= 10000) {
-				isValid = 1;
-				return;
-			} 
-		})
-		if (isValid == 0) invalid.push(layer1.getTooltip());
-	});
-
-	return invalid;
-}

@@ -17,6 +17,9 @@ Rede Geodésica Nacional
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
    integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
    crossorigin=""></script>
+   <link rel="stylesheet" href="https://leaflet.github.io/Leaflet.markercluster/dist/MarkerCluster.css" />
+   <link rel="stylesheet" href="https://leaflet.github.io/Leaflet.markercluster/dist/MarkerCluster.Default.css" />
+   <script src="https://leaflet.github.io/Leaflet.markercluster/dist/leaflet.markercluster-src.js"></script>
 
 <SCRIPT TYPE="text/javascript" SRC="rgn.js"></SCRIPT>
 <STYLE>
@@ -53,8 +56,9 @@ input { padding: 0; margin: 0;}
 	<input type="checkbox" id="order4" checked onchange="checkboxUpdate(this)"/>
 <br />&nbsp;&nbsp;&nbsp;&nbsp;
 
-<br /><INPUT TYPE="button" ID="talefes" VALUE="Talefes" ONCLICK="alertTalefes()">
+<br /><INPUT TYPE="button" ID="talefes" VALUE="Talefes" ONCLICK="alertInvalidVGs()">
 <br />
+<br /><INPUT TYPE="button" ID="Altitudes" VALUE="Altitudes" ONCLICK="showAltitude()">
 <br />&nbsp;&nbsp;&nbsp;&nbsp;Etc.
 
 <hr><b>Estatísticas:</b>
