@@ -123,7 +123,8 @@ class VGP extends POI {
 			"<br>Latitude: " + this.latitude + 
 			"<br>Longitude: " + this.longitude + 
 			"<br>Altitude: " + this.altitude +
-			this.getButtomStreet(this.latitude, this.longitude)
+			this.getButtomStreet(this.latitude, this.longitude) +
+			this.getButtonSameType(this.type)
 			)
 			.bindTooltip(this.name);
 			//.addTo(this.lmap);
@@ -132,9 +133,17 @@ class VGP extends POI {
 
 	getButtomStreet(lat, long) {
         let buttom = 
-        "<br><INPUT TYPE='button' ID='streets' VALUE='Google Streets' ONCLICK='openStreets(" + lat + "," + long + ")'>";
+        "<br><INPUT TYPE='button' ID='streets'" +
+		 "VALUE='Google Streets' ONCLICK='openStreets(" + lat + "," + long + ")'>";
         return buttom;
     }
+
+	getButtonSameType(type){
+		let button =
+		"<br><INPUT TYPE='button' ID='sameType'" +  
+		"VALUE='VGs com mesmo tipo' ONCLICK='circleSameType(\"" + type + "\")'>";
+		return button;
+	}
 	
 
 }
@@ -142,15 +151,52 @@ class VGP extends POI {
 class VG1 extends VGP {
 	constructor(xml, icon){
 		super(xml, icon);
+		this.numOfNearbyVGs = 0;
 	}
 
-	
+	createMarker(icon){
+		let marker = L.marker([this.latitude, this.longitude], {icon: icon});
+		//this.markers.push(marker);
+		marker
+			.bindPopup("Nome do Local: " + this.name +
+			"<br>Ordem: " + this.order +
+			"<br>Tipo: " + this.type +
+			"<br>Latitude: " + this.latitude + 
+			"<br>Longitude: " + this.longitude + 
+			"<br>Altitude: " + this.altitude +
+			this.getButtomStreet(this.latitude, this.longitude) +
+			this.getButtonSameType(this.type) +
+			"<br />&nbsp;&nbsp;Total Nearby VG1's: " + 
+			"<SPAN id='total_nearby_VG1s' style='color:black'>0</b></SPAN>"
+			)
+			.bindTooltip(this.name);
+			//.addTo(this.lmap);
+		return marker;
+	}
 
 }
 
 class VG2 extends VGP {
 	constructor(xml, icon){
 		super(xml, icon);
+	}
+	createMarker(icon){
+		let marker = L.marker([this.latitude, this.longitude], {icon: icon});
+		//this.markers.push(marker);
+		marker
+			.bindPopup("Nome do Local: " + this.name +
+			"<br>Ordem: " + this.order +
+			"<br>Tipo: " + this.type +
+			"<br>Latitude: " + this.latitude + 
+			"<br>Longitude: " + this.longitude + 
+			"<br>Altitude: " + this.altitude +
+			this.getButtomStreet(this.latitude, this.longitude) +
+			this.getButtonSameType(this.type) +
+			"<br /><INPUT TYPE='button' ID='nearbyVG2s' VALUE='VG2s Proximos' ONCLICK='getNearbyVG2s("+this.latitude + "," + this.longitude +")'>"
+			)
+			.bindTooltip(this.name);
+			//.addTo(this.lmap);
+		return marker;
 	}
 }
 
@@ -184,6 +230,7 @@ class Map {
 		this.countByOrder = [0,0,0,0];
 		this.highestVG = null;
 		this.lowestVG = null;
+		this.showNearbyVG2s = null;
 		this.lmap = L.map(MAP_ID).setView(center, zoom);
 		this.addBaseLayers(MAP_LAYERS);
 		let icons = this.loadIcons(RESOURCES_DIR);
@@ -198,10 +245,18 @@ class Map {
 		
 	}
 
+	
+
 	removeCircles(){	
 		this.altitudeCircles.remove(this.lmap)
 		this.lmap.off('click', function() {this.removeCircles()});
 	}
+
+	removeNearbyVG2s(){
+		this.showNearbyVG2s.remove(this.lmap)
+		this.lmap.off('click', function() {this.removeNearbyVG2s()})
+	}
+	
 
 	makeMapLayer(name, spec) {
 		let urlTemplate = MAP_URL;
@@ -218,6 +273,12 @@ class Map {
 					attribution: attr
 			});
 		return layer;
+	}
+
+	removeSameTypeCircles(){
+		this.sameTypeCircles.remove(this.lmap)
+		this.lmap.off('click', function() {this.removeSameTypeCircles()});
+		this.sameTypeCircles = null;
 	}
 
 	getAltitudeCircles(){
@@ -276,6 +337,7 @@ class Map {
 				let a = getFirstValueByTagName(xs[i], "order")
 				a = parseInt(a);
 				switch (a){
+					
 					case 1: vgs[i] = new VG1(xs[i], icons['order'+ a]);
 					break;
 					case 2: vgs[i] = new VG2(xs[i], icons['order'+ a]);
@@ -338,6 +400,18 @@ class Map {
 			circle.bindPopup(popup);
 		return circle;
 	}
+
+	addCircleGreen(pos, radius, popup) {
+		let circle =
+			L.circle(pos,
+				radius*1.5,
+				{color: 'lime', fillColor: 'DarkGreen', fillOpacity: 0.4}
+			);
+		if( popup != "" )
+			circle.bindPopup(popup);
+		return circle;
+	}
+
 	
 }
 
@@ -359,7 +433,7 @@ function onLoad()
 	document.getElementById('total_caches').innerHTML = sumVGs();
 	document.getElementById('visible_caches').innerHTML = sumVGs();
 	document.getElementById('highest_vg').innerHTML = map.highestVG.name;
-	document.getElementById('lowest_vg').innerHTML = map.lowestVG.name;
+	
 	
 }
 
@@ -434,13 +508,42 @@ function calculateDistance(orderNumber, leftLimit, rightLimit) {
 }
 
 function showAltitude(){
-	map.lmap.on('click', function() {map.removeCircles();});
 	map.altitudeCircles.addTo(map.lmap);
-	
+	map.lmap.on('click', function() {map.removeCircles();});
 }
 
 function openStreets(lat, long){
     let query = "http://maps.google.com/maps?q=&layer=c&cbll=";
     document.location = query + lat + "," + long;
+}
+
+function circleSameType(type){
+	
+	
+	let circles = L.layerGroup();
+	for(let i = 0; i < map.vgs.length; i++){
+		if (map.vgs[i].type === type){
+			circles.addLayer(map.addCircleGreen([map.vgs[i].latitude, map.vgs[i].longitude], 100))
+		}
+	}
+	
+	map.sameTypeCircles = circles;
+	map.sameTypeCircles.addTo(map.lmap);
+	map.lmap.on('click', function() {map.removeSameTypeCircles();});
+	
+}
+
+function getNearbyVG2s(lat, long){
+	let circles = L.layerGroup();
+	for (let i = 0; i < map.vgs.length; i++){
+		if (parseInt(map.vgs[i].order) == 2){
+			let distance = haversine(lat, long, map.vgs[i].latitude, map.vgs[i].longitude)
+			if (distance != 0 && distance <= 30)
+			circles.addLayer(map.addCircleGreen([map.vgs[i].latitude, map.vgs[i].longitude], 25))
+		}
+	}
+	map.showNearbyVG2s = circles;
+	map.showNearbyVG2s.addTo(map.lmap);
+	map.lmap.on('click', function () {map.removeNearbyVG2s()}) 
 }
 
