@@ -3,7 +3,7 @@
 Aluno 1: 57747 Bruno Braga
 Aluno 2: 57833 Bruno Cabrita
 
-Comentario: Foram realizadas todas as funções propostas pelo enunciado
+Comentario:
 
 O ficheiro "rng.js" tem de incluir, logo nas primeiras linhas,
 um comentário inicial contendo: o nome e número dos dois alunos que
@@ -43,25 +43,11 @@ const VG_ORDERS =
 	["order1", "order2", "order3", "order4"];
 const RGN_FILE_NAME =
 	"rgn.xml";
-const FILL_COLOUR_CIRCLE_PER_ORDER =
-	["orange", "darkGreen", "cyan", "darkGrey"]
-const OUTLINE_COLOUR_CIRCLE_PER_ORDER =
-	["red", "lime", "darkBlue", "black"]
-const LEFT_LIMIT_DISTANCE_INTERVAL_PER_ORDER = // in Kms
-	[30, 20, 5]
-const RIGHT_LIMIT_DISTANCE_INTERVAL_PER_ORDER = // in Kms
-	[60, 40, 10]
-
-	const defaultColor = 
-    "#add8e6";
 
 const GOOGLE_MAPS_URL = "https://www.google.com/maps/@";
 /* GLOBAL VARIABLES */
 
 let map = null;
-const ZOOM_LEVEL_TO_DELETE_ALTITUDE_CIRCLES = 13;
-const ZOOM_LEVEL_TO_DELETE_REMAINING_CIRCLES = 12;
-
 //let vgs = null;
 
 /* USEFUL FUNCTIONS */
@@ -180,10 +166,10 @@ class VG1 extends VGP {
 			"<br>Latitude: " + this.latitude + 
 			"<br>Longitude: " + this.longitude + 
 			"<br>Altitude: " + this.altitude +
-			"<br/>VG's Próximos: <SPAN id='total_nearby_VG1s'" +
-			"style='color:black'>"+ this.numOfNearbyVGs +"</b></SPAN>" +
 			this.getButtomStreet(this.latitude, this.longitude) +
-			this.getButtonSameType(this.type) 
+			this.getButtonSameType(this.type) +
+			"<br />&nbsp;&nbsp;VG1's Próximos: " + 
+			"<SPAN id='total_nearby_VG1s' style='color:black'>"+ this.numOfNearbyVGs +"</b></SPAN>"
 			)
 			.bindTooltip(this.name);
 			//.addTo(this.lmap);
@@ -212,6 +198,7 @@ class VG2 extends VGP {
 			"ONCLICK='getNearbyVG2s("+this.latitude + "," + this.longitude +")'>"
 			)
 			.bindTooltip(this.name);
+			//.addTo(this.lmap);
 		return marker;
 	}
 }
@@ -246,7 +233,7 @@ class Map {
 		this.countByOrder = [0,0,0,0];
 		this.highestVG = null;
 		this.lowestVG = null;
-		this.showNearbyVG2s = L.layerGroup();
+		this.showNearbyVG2s = null;
 		this.lastUsedType = null;
 		this.lastUsedLat = 0;
 		this.lastUsedLong = 0;
@@ -257,7 +244,7 @@ class Map {
 		this.visibleVGS = this.vgs;
 		this.stopZoomControl = 0;
 		this.showAltitude = 0;
-		this.showVG2 = 0;
+		this.showNearbyVG2 = 0;
 		this.showSameType = 0;
 		this.populate();
 		this.getAltitudeCircles();
@@ -357,12 +344,6 @@ class Map {
 		return vgs;
 	}
 
-	/**
-	 * Inserts all the VGs into the respective layer groups, dependent on its order values
-	  and sums the respective counter by 1 per insert then insert the layers into the cluster
-	  which then goes to the map
-	 */
-	
 	populate()  {
 		for(let i = 0 ; i < this.vgs.length ; i++) {
 			switch (parseInt(this.vgs[i].order)){
@@ -393,10 +374,6 @@ class Map {
 		return this.lmap.on('click', handler2);
 	}
 
-	/**
-	 * Creates a circle on a given position and radius, with outline color and filling color provided
-		and a popup if it exists to associate with the circle.
-	 */
 	addCircle(pos, radius,colour, fillcolour, popup) {
 		let circle =
 			L.circle(pos,
@@ -408,10 +385,6 @@ class Map {
 		return circle;
 	}
 
-	/**
-	 * Removes the circles that represent the alitude of each visible marker from the map.
-	 * Turns off the event listener on single click that triggers this function
-	 */
 	removeAltitudeCircles(){	
 		this.lmap.removeLayer(this.altitudeCircles);
 		this.lmap.off('click', function() {this.removeAltitudeCircles()});
@@ -419,155 +392,79 @@ class Map {
 		this.showAltitude = 0
 	}
 
-	/**
-	 * Removes the circles that represent the VG of order 2 near the one selected from the map.
-	 * Turns off the event listener on single click that triggers this function
-	 */
 	removeNearbyVG2s(){
-		this.lmap.removeLayer(this.showNearbyVG2s)
+		this.showNearbyVG2s.remove(this.lmap)
 		this.lmap.off('click', function() {this.removeNearbyVG2s()})
 		this.stopZoomControl = 1;
-		this.showVG2 = 0;
+		this.showNearbyVG2s = 0;
 	}
 
-	/**
-	 * Updates the visible VGs vector to include the previous ones and the ones that have given order
-	 * @param {*} order order of the VGs that were invisible before
-	 */
 	addVisibleVGS(order){
 		let vgs = []
 		for(let i = 0; i < this.vgs.length; i++){
 			if (this.visibleVGS.includes(this.vgs[i]) || parseInt(this.vgs[i].order) == order) vgs.push(this.vgs[i])
 		}
 		this.visibleVGS = vgs;
+		this.getAltitudeCircles();
 	}
 
-	/**
-	 * Updates the visible VGs vector to include the previous ones that dont have the same given order
-	 * @param {Number} order order of the VGs that are going to be invisible on the map
-	 */
 	removeVisibleVGS(order){
 		let vgs = []
 		for(let i = 0; i < this.vgs.length; i++){
-			if (this.visibleVGS.includes(this.vgs[i]) && parseInt(this.vgs[i].order) != order) vgs.push(this.vgs[i])
+			if (parseInt(this.vgs[i].order) != order) vgs.push(this.vgs[i])
 		}
 		this.visibleVGS = vgs;
+		this.getAltitudeCircles();
 	}
 
-	/**
-	 * Removes the circles from the map that represent the VGs that have the same type as the one previous selected one
-	 * Turns off the event listener on single click that triggers this function
-	 */
 	removeSameTypeCircles(){
 		this.sameTypeCircles.remove(this.lmap)
 		this.lmap.off('click', function() {this.removeSameTypeCircles()});
-		this.lmap.off('zoomend', function() {this.zoomControl()})
 		this.stopZoomControl = 1;
 		this.showSameType = 0;
 	}
 
-	/**
-	 * Returns the amount of VGs that are close to the designated position on the Earth's globe
-	 * @param {Number} lat Latitude of the selected VG
-	 * @param {Number} long Longitude of the selected VG
-	 * @param {Vector} vgs List of VGs that were given to the map to be represented
-	 * @returns amount of VGs close to the selected VG by maximum distance of 60km
-	 */
 	getNearbyVGs(lat, long, vgs){
 		let sum = 0
 		for (let i = 0; i < vgs.length; i++){
 			
 				let distance = haversine(lat, long, vgs[i].latitude, vgs[i].longitude)
-				if (distance != 0 && distance <= 60)
+				if (distance != 0 && distance <= 30)
 				sum++;
 			
 		}
 		return sum;
 	}
 
-	/**
-	 * Updates the variable "altitudeCircles" dependant on what is currently visible in the map,
-	 * which is basically creating a circle with colours (dependant on its order) on each marker
-	 * with a radius depedant on its altitude value times a constant (in this case 2)
-	 */
 	getAltitudeCircles(){
 		let circles = L.layerGroup();
 		for(let pos = 0; pos < this.visibleVGS.length; pos++){
-			
+			if (this.clusteringVgs.hasLayer(this.visibleVGS[pos].marker)){
 				let alt = Number(this.visibleVGS[pos].altitude);
 				if (Number.isNaN(alt)) alt = 0;
-				let order = parseInt(this.visibleVGS[pos].order)
 				circles.addLayer(this.addCircle([this.visibleVGS[pos].latitude,
-					 this.visibleVGS[pos].longitude], alt*2 ,
-					 OUTLINE_COLOUR_CIRCLE_PER_ORDER[order-1],
-					 FILL_COLOUR_CIRCLE_PER_ORDER[order-1], "Altitude: " + alt));
-				
+					 this.visibleVGS[pos].longitude], alt ,'orange', 'darkblue', "Altitude: " + alt));
+				}	
 			}
 		
 		this.altitudeCircles = circles;
 		
 	}
-	
-	/**
-	 * Updates the variable "showNearbyVG2s" dependant on what is currently visible in the map,
-	 * which creates a circle on each marker that is within 30kms of a given position in the globe
-	 * @param {Number} lat Latitude of the selected VG of order 2
-	 * @param {Number} long Longitude of the selected VG of order 2
-	 */
-	getNearbyVG2s(lat, long){
-		let circles = L.layerGroup();
-		for (let i = 0; i < this.visibleVGS.length; i++){
-			let order = parseInt(this.visibleVGS[i].order)
-			if (order == 2){
-				let lat2 = this.visibleVGS[i].latitude;
-				let long2 = this.visibleVGS[i].longitude;
-				let distance = haversine(lat, long, lat2, long2)
-				if (distance != 0 && distance <= 30)
-				circles.addLayer(this.addCircle([lat2, long2],
-					150, 'orange', 'yellow', "VG2 Proximo do selecionado"))
-				}
-			}
-		this.showNearbyVG2s = circles;
-		}
 
-	/**
-	 * Updates the variable "sameTypeCircles" dependant on what it currently visible in the map,
-	 * which creates a circle on each marker on the map that has the same VG type as the one given
-	 * @param {String} type Type of the selected VG
-	 */
-	getSameType(type){
-			let circles = L.layerGroup();
-		for(let i = 0; i < this.visibleVGS.length; i++){
-			if (this.visibleVGS[i].type === type){
-				let lat = this.visibleVGS[i].latitude;
-				let long = this.visibleVGS[i].longitude;
-				circles.addLayer(this.addCircle([lat, long],200,
-					'purple', 'red', "Tipo: " + type))
-			}
-		}
-		this.sameTypeCircles = circles;
-	}
-
-	/**
-	 * Updates the map dependant on the zoom level the map is currently on
-	 * which is responsible of adding/removing the circles to/from the map
-	 */
 	zoomControl(){
 		if(this.stopZoomControl == 0) {
 		let zoomLevel = this.lmap.getZoom()	
-		if (zoomLevel < ZOOM_LEVEL_TO_DELETE_ALTITUDE_CIRCLES ) {
-			if(this.showAltitude == 1) this.lmap.removeLayer(this.altitudeCircles)}
-			 else if(this.showAltitude == 1) this.lmap.addLayer(this.altitudeCircles)
-		
-		if (zoomLevel < ZOOM_LEVEL_TO_DELETE_REMAINING_CIRCLES ) {
-			if(this.showVG2 == 1) this.lmap.removeLayer(this.showNearbyVG2s)
-			if(this.showSameType == 1) this.lmap.removeLayer(this.sameTypeCircles)}
-			 else {
-				if(this.showVG2 == 1) this.lmap.addLayer(this.showNearbyVG2s)
+		if (zoomLevel < 15 ) {
+			if(this.showAltitude == 1) this.lmap.removeLayer(this.altitudeCircles)
+			if(this.showNearbyVG2s == 1) this.lmap.removeLayer(this.showNearbyVG2s)
+			if(this.showSameType == 1) this.lmap.removeLayer(this.sameTypeCircles)
+		}
+
+			else {
+				if(this.showAltitude == 1) this.lmap.addLayer(this.altitudeCircles)
+				if(this.showNearbyVG2s == 1) this.lmap.addLayer(this.showNearbyVG2s)
 				if(this.showSameType == 1) this.lmap.addLayer(this.sameTypeCircles)
-		
-			 }
-			
+			}
 		}
 	}
 
@@ -576,126 +473,95 @@ class Map {
 
 /* FUNCTIONS for HTML */
 
-/**
- * Initializes the map and required statistics of the map to display on the website
- * The colour is set to "lightblue" but it may be changed with the colour header customization
- */
 function onLoad()
 {
 	map = new Map(MAP_CENTRE, 12);
-	// adds a circle where FCT/UNL is located
-	map.lmap.addLayer(map.addCircle(MAP_CENTRE, 100,'yellow', 'orange', "FCT/UNL")); 
-	allOrderChecked(); // checks all checkboxes to show all the markers on the map when loading the page
-	// Displays the amount of VGs that the map loaded into it
-	document.getElementById('total_caches').innerHTML = map.vgs.length;
-	// Displays the amount of VGs that are visible on the map
-	document.getElementById('visible_caches').innerHTML = map.visibleVGS.length;
-	// Displays the amount of VGs loaded on the map per order
+	map.addCircle(MAP_CENTRE, 100,'yellow', 'orange', "FCT/UNL");
+	allOrderChecked();
+	//document.getElementById('visible_caches').innerHTML = vgs.length;
+	function sumVGs() {
+		let sum = 0;
+		map.countByOrder.forEach(e => {
+			sum += e;
+		});
+		return sum;
+	};
+	document.getElementById('total_caches').innerHTML = sumVGs();
+	document.getElementById('visible_caches').innerHTML = sumVGs();
 	for(let i = 1; i <= VG_ORDERS.length; i++){
 		document.getElementById('amount_VG'+ i + 's').innerHTML = map.countByOrder[i-1];
 	}
-	// Displays the VG loaded on the map with the highest alitude
+	
 	document.getElementById('highest_vg').innerHTML = map.highestVG.name;
-	// Displays the VG loaded on the map with the lowest alitude
 	document.getElementById('lowest_vg').innerHTML = map.lowestVG.name;
-	// The colour header where the user can change the colour of the rectangle on the left
-	let colorWell = document.getElementById('color_header');
-    colorWell.value = defaultColor;
-    colorWell.addEventListener("input", updateFirst);
-	// Turns on an event listener to be updating the map according to the zoom level its located on
-	// and either delete the circles when less zoomed in or make them appear when less zoomed out
-	map.lmap.on('zoomend', function() {map.zoomControl();});
+	
 }
 
-/**
- * Changes the background of the div HTML element to the given colour on update
- * @param {Event} event 
- */
-function updateFirst(event) {
-    let p = document.querySelector("div");
-
-    p ? p.style.background = event.target.value : alert("Erro de cor");
-  }
-
-  /**
-   * When a checkbox is checked/unchecked, we check which one it belongs to (by VG's order)
-   *  and then do the respective operations which are, if it was checked, then we add the
-   *  VGs of that order to the map.
-   * If it was unchecked, then we need to remove the markers of that order from the map
-   * to make them invisible, then update the visible number on the website.
-   * @param {HTML} document The checkbox that triggered this function
-   */
 function checkboxUpdate(document){
 	let orderStr = document.id;
 	let order = parseInt(orderStr.slice(5));
 	let orderGroup = null;
+	let sum = 0;
 
 	let span_content = this.document.getElementById('visible_caches');
 	switch (order){
-			case 1: orderGroup = map.order1_layerGroup;
+			case 1: 
+				orderGroup = map.order1_layerGroup;
+				sum = map.countByOrder[0];
 			break;
-			case 2: orderGroup = map.order2_layerGroup;
+			case 2: 
+				orderGroup = map.order2_layerGroup;
+				sum = map.countByOrder[1];
 			break;
-			case 3: orderGroup = map.order3_layerGroup;
+			case 3:
+				orderGroup = map.order3_layerGroup;
+				sum = map.countByOrder[2];
 			break;
-			case 4: orderGroup = map.order4_layerGroup;
+			case 4: 
+				orderGroup = map.order4_layerGroup;
+				sum = map.countByOrder[3];
 			break;
 		}
 
 		if(document.checked){
 			map.clusteringVgs.addLayer(orderGroup);
+			span_content.innerHTML = parseInt(span_content.innerHTML) + sum;
 			map.addVisibleVGS(order);
 		}else{
 			map.clusteringVgs.removeLayer(orderGroup);
-			map.removeVisibleVGS(order);	
+			span_content.innerHTML = parseInt(span_content.innerHTML) - sum;
+			map.removeVisibleVGS(order);
 		}
-		span_content.innerHTML = map.visibleVGS.length;
-		// If there was circles present on the map when the check/uncheck happened,
-		// we need to update the circles to be according to the VGs visible on the map
-	if(map.lmap.hasLayer(map.altitudeCircles)) showAltitude()
-	if(map.lmap.hasLayer(map.showNearbyVG2s)) getNearbyVG2s(map.lastUsedLat, map.lastUsedLong)
+	if(map.lmap.hasLayer(map.altitudeCircles)){
+		map.removeAltitudeCircles();
+		map.getAltitudeCircles();
+		showAltitude()}
+	if(map.lmap.hasLayer(map.showNearbyVG2s)) showNearbyVG2s(map.lastUsedLat, map.lastUsedLong)
 	if(map.lmap.hasLayer(map.sameTypeCircles)) circleSameType(map.lastUsedType)
 	
 }
-/**
- * Sets all checkboxes present on the website to checked state
- */
+
 function allOrderChecked() {
 	VG_ORDERS.forEach(order => {
 		document.getElementById(order).checked = true;
 	});
 }
 
-/**
- * When called, brings up an alert to display the amount of VGs that dont follow the given
- * definitions of its order( for example, a VG of order1 not having another VG of the same
- *  order within 30KM to 60KM of the first)
- */
 function alertInvalidVGs() {
 	alert("VGs Inválidos\nOrdem 1: " + calculateDistance(1, 30, 60) + 
 	"\nOrdem 2: " + calculateDistance(2, 20, 30) +
 	"\nOrdem 3: " + calculateDistance(3, 5, 10))
 }
 
-/**
- * Provides a list of VGs that dont respect their given distance intervals with others
- * of the same given order
- * @param {Number} orderNumber Order that is being tested
- * @returns 
- */
-function calculateDistance(orderNumber) {
+function calculateDistance(orderNumber, leftLimit, rightLimit) {
+	//percorrer o layer
 	let invalid = [];
-	//Go through all the VGs lodaded on the map
 	for(let i = 0; i < map.vgs.length; i++){
 		let isValid = 0;
 		let lat1 = map.vgs[i].latitude;
 		let long1 = map.vgs[i].longitude;
 		let distance;
-		let leftLimit = LEFT_LIMIT_DISTANCE_INTERVAL_PER_ORDER[orderNumber-1];
-		let rightLimit = RIGHT_LIMIT_DISTANCE_INTERVAL_PER_ORDER[orderNumber-1]
-		// If the selected VG has the same order as the one we're looking at
 		if(parseInt(map.vgs[i].order) == orderNumber){
-			// We compare it with others that are at the same order
 		for(let j = 0; j < map.vgs.length; j++){
 			if (parseInt(map.vgs[j].order) == orderNumber){
 				let lat2 = map.vgs[j].latitude
@@ -708,73 +574,70 @@ function calculateDistance(orderNumber) {
 				}
 			}
 		}
-		// If the selected VG leaves the second for without having isValid at 1, means that
-		// it doesn't have any other VG of the same order in the distance interval
+		//alert(distance + " " + map.vgs[i].name)
 		if (isValid == 0) {
 			invalid.push(map.vgs[i].name);}
 		}
 	}
-	// If there isn't any invalid VGs loaded on the map, then we display that it's empty
 	if (invalid.length == 0) invalid.push("Vazio");
 	return invalid;
 }
 
-	/**
-	 * Displays the circles that represent the altitude of each marker
-	 */
 function showAltitude(){
-	map.removeAltitudeCircles()
-	map.getAltitudeCircles()
 	map.altitudeCircles.addTo(map.lmap);
 	map.lmap.on('click', function() {map.removeAltitudeCircles()});
+	map.lmap.on('zoomend', function() {map.zoomControl();});
 	map.stopZoomControl = 0;
 	map.showAltitude = 1;
-	map.zoomControl();
 }
 
-/**
- * Opens a link to Google Maps Street view on given latitude and longitude
- * @param {Number} lat Latitude of the point
- * @param {Number} long Longitude of the point
- */
 function openStreets(lat, long){
     let query = "http://maps.google.com/maps?q=&layer=c&cbll=";
     document.location = query + lat + "," + long;
 }
-/**
- * Displays the circles that represent the VGs have the same given type
- * @param {*} type Type of the selected VG
- */
+
 function circleSameType(type){
 	
 	
-	
-	if(map.showSameType == 1) map.lmap.removeLayer(map.sameTypeCircles)
-	map.getSameType(type);
+	let circles = L.layerGroup();
+	for(let i = 0; i < map.visibleVGS.length; i++){
+		if (map.visibleVGS[i].type === type){
+			let lat = map.visibleVGS[i].latitude;
+			let long = map.visibleVGS[i].longitude;
+			circles.addLayer(map.addCircle([lat, long],100,'lime', 'darkGreen', "Tipo: " + type))
+		}
+	}
+	if(map.sameTypeCircles != null)
+	map.lmap.removeLayer(map.sameTypeCircles);
+	map.sameTypeCircles = circles;
 	map.sameTypeCircles.addTo(map.lmap);
 	map.lastUsedType = type;
 	map.lmap.on('click', function() {map.removeSameTypeCircles();});
+	map.lmap.on('zoomend', function() {map.zoomControl();})
 	map.stopZoomControl = 0;
 	map.showSameType = 1;
-	map.zoomControl();
 }
 
-/**
- * Displays the circles that represent the VGs of order 2 that are
- *  near the given position on the globe
- * @param {*} lat Latitude of the selected VG of order 2
- * @param {*} long Longitude of the selected VG of order 2
- */
 function getNearbyVG2s(lat, long){
-	
-	if(map.showVG2 == 1) map.lmap.removeLayer(map.showNearbyVG2s)
-	map.getNearbyVG2s(lat, long);
-	map.lmap.addLayer(map.showNearbyVG2s);
+	let circles = L.layerGroup();
+	for (let i = 0; i < map.visibleVGS.length; i++){
+		if (parseInt(map.visibleVGS[i].order) == 2){
+			let lat2 = map.visibleVGS[i].latitude;
+			let long2 = map.visibleVGS[i].longitude;
+			let distance = haversine(lat, long, lat2, long2)
+			if (distance != 0 && distance <= 30)
+			circles.addLayer(map.addCircle([lat2, long2], 50, 'lightblue', 'darkGreen', "VG2 Proximo do selecionado"))
+		}
+	}
+	if(map.showNearbyVG2s != null)
+	map.lmap.removeLayer(map.showNearbyVG2s);
+	map.showNearbyVG2s = circles;
+	map.showNearbyVG2s.addTo(map.lmap);
 	map.lastUsedLat = lat;
 	map.lastUsedLong = long;
 	map.lmap.on('click', function () {map.removeNearbyVG2s()}) 
+	map.lmap.on('zoomend', function() {map.zoomControl();})
 	map.stopZoomControl = 0;
-	map.showVG2 = 1;
-	map.zoomControl();
+	map.showNearbyVG2 = 1;
 }
 

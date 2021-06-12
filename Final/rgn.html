@@ -23,7 +23,7 @@ Rede Geodésica Nacional
 
 <SCRIPT TYPE="text/javascript" SRC="rgn.js"></SCRIPT>
 <STYLE>
-html, body { font-size:14px; height: 100%;  width: 100%; padding: 0; margin: 0;}
+html, body { font-size:12px; height: 100%;  width: 100%; padding: 0; margin: 0;}
 input { padding: 0; margin: 0;}
 </STYLE>
 </HEAD>
@@ -36,7 +36,7 @@ input { padding: 0; margin: 0;}
 
 <BODY ONLOAD="onLoad()">
 
-<DIV STYLE="position: fixed; top: 0px; left: 0px; height: 100%; width: 200px; background: #add8e6">
+<DIV STYLE="position: fixed; top: 0px; left: 0px; height: 100%; width: 200px; background: lightblue">
 <H2>Rede Geodésica Nacional</H2>
 
 <hr><b>Autores:</b> <br />
@@ -57,35 +57,36 @@ input { padding: 0; margin: 0;}
 <br />&nbsp;&nbsp;&nbsp;&nbsp;
 
 <br /><INPUT TYPE="button" ID="VGs_Invalidos" VALUE="VG's Invalidos" ONCLICK="alertInvalidVGs()">
-&nbsp;<INPUT TYPE="button" ID="Altitudes" VALUE="Altitudes" ONCLICK="showAltitude()">
 <br />
+<br /><INPUT TYPE="button" ID="Altitudes" VALUE="Altitudes" ONCLICK="showAltitude()">
+<br />&nbsp;&nbsp;&nbsp;&nbsp;Etc.
 
 <hr><b>Estatísticas:</b>
-<ul>
-	<li>VGs visíveis: <SPAN id='visible_caches' style="color:black"><b>0</b></SPAN></li>
-	<li>Total VG's: <SPAN id='total_caches' style="color:black">0</b></SPAN></li>
-	<li>Total VG1's: <SPAN id='amount_VG1s' style="color:black">0</b></SPAN></li>
-	<li>Total VG2's: <SPAN id='amount_VG2s' style="color:black">0</b></SPAN></li>
-	<li>Total VG3's: <SPAN id='amount_VG3s' style="color:black">0</b></SPAN></li>
-	<li>Total VG4's: <SPAN id='amount_VG4s' style="color:black">0</b></SPAN></li>
-	<li>VG mais Elevado: <SPAN id='highest_vg' style="color:black">0</b></SPAN></li>
-	<li>VG menos Elevado: <SPAN id='lowest_vg' style="color:black">0</b></SPAN></li>
-</ul>
-
-<hr><b>Opções Adicionais:</b>
-<ul>
-	<li>
-		Cor do Header:
-		<br>
-		<input type="color" id="color_header" value="#add8e6">
-	</li>
-</ul>
-
-<hr>Conteudo da rede geodésica nacional proveniente de 
-<a href="https://www.dgterritorio.gov.pt/geodesia/redes-geodesicas/rede-geodesica-nacional">DGTerritório</a>
+<br />&nbsp;&nbsp;VGs visíveis: <SPAN id='visible_caches' style="color:black"><b>0</b></SPAN>
+<br />
+<br />&nbsp;&nbsp;Total VG's: <SPAN id='total_caches' style="color:black">0</b></SPAN>
+<br />
+<br />&nbsp;&nbsp;Total VG1's: <SPAN id='amount_VG1s' style="color:black">0</b></SPAN>
+<br />
+<br />&nbsp;&nbsp;Total VG2's: <SPAN id='amount_VG2s' style="color:black">0</b></SPAN>
+<br />
+<br />&nbsp;&nbsp;Total VG3's: <SPAN id='amount_VG3s' style="color:black">0</b></SPAN>
+<br />
+<br />&nbsp;&nbsp;Total VG4's: <SPAN id='amount_VG4s' style="color:black">0</b></SPAN>
+<br />
+<br />&nbsp;&nbsp;VG mais Elevado: <SPAN id='highest_vg' style="color:black">0</b></SPAN>
+<br />
+<br />&nbsp;&nbsp;VG menos Elevado: <SPAN id='lowest_vg' style="color:black">0</b></SPAN>
+<br />
+<hr>
 </DIV>
+
+
+
+
 
 <div id="mapid" style="position: fixed; top: 0px; left: 200px; width: 100%; height: 100%;"></div>
 </BODY>
 
 </HTML>
+
